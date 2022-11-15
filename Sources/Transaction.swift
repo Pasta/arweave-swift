@@ -36,12 +36,15 @@ public struct Transaction: Codable {
     public var target: String = ""
     public var quantity: String = "0"
     public var data: String = ""
+    public var data_size: String = ""
+    public var data_root: String = ""
     public var reward: String = ""
+    public var format: String = "2"
     public var signature: String = ""
 
-    private enum CodingKeys: String, CodingKey {
-        case id, last_tx, owner, tags, target, quantity, data, reward, signature
-    }
+//    private enum CodingKeys: String, CodingKey {
+//        case id, last_tx, owner, tags, target, quantity, data, reward, format, signature
+//    }
 
     public var priceRequest: PriceRequest {
         PriceRequest(bytes: rawData.count, target: Address(address: target))
@@ -62,10 +65,10 @@ public extension Transaction {
 
     func sign(with wallet: Wallet) async throws -> Transaction {
         var tx = self
-        
         tx.last_tx = try await Transaction.anchor()
         tx.data = rawData.base64URLEncodedString()
-        
+        tx.data_size = String(rawData.count);
+        tx.data_root = try wallet.sign(rawData).base64URLEncodedString()
         let priceAmount = try await Transaction.price(for: priceRequest)
         tx.reward = String(describing: priceAmount)
 
@@ -88,6 +91,7 @@ public extension Transaction {
 
     private func signatureBody() -> Data {
         return [
+            format.data(using: .utf8),
             Data(base64URLEncoded: owner),
             Data(base64URLEncoded: target),
             rawData,
